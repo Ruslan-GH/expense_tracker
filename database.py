@@ -12,3 +12,8 @@ SessionLocal = sessionmaker(bind=engine)
 
 def get_session():
     return SessionLocal()
+
+def init_db():
+    # Імпортуємо Base тут, щоб уникнути помилок циклічного імпорту
+    from models import Base
+    Base.metadata.create_all(bind=engine)
