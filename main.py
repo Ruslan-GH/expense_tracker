@@ -1,6 +1,5 @@
 from database import get_session, init_db
 import reports, actions, exporter
-from datetime import date
 
 from data_example import seed_data
 from models import Expense
@@ -123,7 +122,7 @@ def menu_expenses(session):
                 except ValueError:
                     print("Введіть числове значення суми.")
                 desc = input("Опис (опційно): ")
-                actions.add_expense(session, title, amount, c_id, description=desc)
+                actions.add_expense(session, title, amount, c_id, description=desc, date=datetime.now())
             except ValueError:
                 print("Помилка у форматі даних.")
 

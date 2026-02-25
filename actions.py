@@ -1,7 +1,7 @@
 from sqlalchemy.exc import SQLAlchemyError
 
 from models import Category, Expense
-from datetime import date
+from datetime import datetime
 
 # Для Категорій
 def add_category(session, name):
@@ -52,7 +52,10 @@ def delete_category(session, cat_id):
         print(f"Помилка при видаленні: {e}")
 
 # Для Витрат
-def add_expense(session, title, amount, category_id, description=None, currency="UAH", expense_date=None):
+def add_expense(session, title, amount, category_id, description=None, currency="UAH", date=None):
+    if date is None:
+        date = datetime.now()
+
     if amount <= 0:
         print("Сума витрати повинна бути більшою за нуль!")
         return
@@ -67,7 +70,8 @@ def add_expense(session, title, amount, category_id, description=None, currency=
             title=title,
             amount=amount,
             category_id=category_id,
-            description=description
+            description=description,
+            date=date
         )
 
         session.add(new_expense)
