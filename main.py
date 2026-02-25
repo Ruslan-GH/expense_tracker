@@ -3,6 +3,8 @@ import reports, actions, exporter
 from datetime import date
 
 from data_example import seed_data
+from models import Expense
+
 
 def main():
     init_db()
@@ -12,34 +14,42 @@ def main():
     session = get_session()
 
     while True:
-        print("=" * 30)
+        print("   ГОЛОВНЕ МЕНЮ")
+        print("═" * 30)
+        print("1. Опції для роботи з категоріями")
+        print("2. Опції для роботи з витратами")
+        print("3. Опції формування звітів")
+        print("0. Вихід з програми")
+        print("═" * 30)
+
+        choice = input("Оберіть пункт: ")
+
+        if choice == "1":
+            menu_categories(session)
+        elif choice == "2":
+            menu_expenses(session)
+        elif choice == "3":
+            menu_reports(session)
+        elif choice == "0":
+            print("Завершення роботи. Бувай!")
+            break
+        else:
+            print("Невірний вибір!")
+
+    session.close()
+
+def menu_categories(session):
+    while True:
         print("Опції для роботи з категоріями")
         print("-" * 30)
         print("1. Додати категорію")
         print("2. Показати всі категорії")
         print("3. Оновити назву категорії")
         print("4. Видалити категорію")
+        print("0. Назад")
         print("=" * 30)
-        print("Опції для роботи з витратами")
-        print("-" * 30)
-        print("5. Додати витрати")
-        print("6. Показати всі витрати")
-        print("7. Оновити витрати")
-        print("8. Видалити витрати")
-        print("=" * 30)
-        print("Опції формування звітів")
-        print("-" * 30)
-        print("9. Відфільтрувати витрати за датою / назвою / категорією")
-        print("10. Отримати максимальну витрату по категорії")
-        print("11. Отримати максимальну витрату по періоду")
-        print("12. Отримати мінімальну витрату по категорії")
-        print("13. Отримати мінімальну витрату по періоду")
-        print("14. Отримати суму по кожній з категорій")
-        print("15. Отримати топ категорію")
-        print("16. Отримати середні витрати за період")
 
-        choice = input("Оберіть пункт: ")
-
+        choice = input("\nОберіть дію: ")
         # --- КАТЕГОРІЇ ---
         if choice == "1":
             name = input("Назва нової категорії: ")
@@ -47,18 +57,29 @@ def main():
 
         elif choice == "2":
             categories = actions.get_all_categories(session)
-            # for c in categories: print(f"ID: {c.id} | {c.name}")
-            report_text = "СПИСОК КАТЕГОРІЙ:\n"
-            report_text += "-" * 20 + "\n"
 
+            print("\n" + "─" * 20)
+            print("СПИСОК КАТЕГОРІЙ:")
+            print("─" * 20)
             for c in categories:
-                line = f"ID: {c.id} | {c.name}"
-                print(line)  # Виводимо в консоль
-                report_text += line + "\n"  # Додаємо в текст звіту
+                print(f"ID: {c.id:<3} | Назва: {c.name}")
+            print("─" * 20)
 
-            save_choice = input("\nЗберегти цей список у файл? (y/n): ")
-            if save_choice.lower() == 'y':
-                exporter.save_report_to_file(report_text)
+            save_choice = input("\nЕкспортувати цей список? (csv/json/no): ").lower().strip()
+
+            if save_choice == "csv":
+                headers = ["ID", "Назва"]
+                # Формуємо список списків для CSV
+                data_rows = [[c.id, c.name] for c in categories]
+                exporter.save_to_csv("all_categories", data_rows, headers)
+
+            elif save_choice == "json":
+                # Формуємо список словників для JSON
+                data_dicts = [{"id": c.id, "name": c.name} for c in categories]
+                exporter.save_to_json("all_categories", data_dicts)
+
+            else:
+                print("Експорт скасовано.")
 
         elif choice == "3":
             try:
@@ -75,57 +96,142 @@ def main():
             except ValueError:
                 print("Помилка: введіть числове ID")
 
+        elif choice == "0":
+            break
+
+def menu_expenses(session):
+    while True:
+        print("Опції для роботи з витратами")
+        print("-" * 30)
+        print("1. Додати витрати")
+        print("2. Показати всі витрати")
+        print("3. Оновити витрати")
+        print("4. Видалити витрати")
+        print("0. Назад")
+        print("=" * 30)
+
+        choice = input("\nОберіть дію: ")
         # --- ВИТРАТИ ---
-        elif choice == "5":
+        if choice == "1":
             try:
                 cats = actions.get_all_categories(session)
                 for c in cats: print(f"{c.id}: {c.name}")
                 c_id = int(input("Оберіть ID категорії: "))
                 title = input("Назва витрати: ")
-                amount = float(input("Сума: "))
+                try:
+                    amount = float(input("Сума: "))
+                except ValueError:
+                    print("Введіть числове значення суми.")
                 desc = input("Опис (опційно): ")
                 actions.add_expense(session, title, amount, c_id, description=desc)
             except ValueError:
                 print("Помилка у форматі даних.")
 
-        elif choice == "6":
+        elif choice == "2":
             expenses = actions.get_all_expenses(session)
             actions.display_expenses(expenses)
 
             save_choice = input("\nЗберегти цей список у файл? (y/n): ")
-            if save_choice.lower() == 'y':
-                header = f"{'ID':<4} | {'Дата':<10} | {'Назва':<15} | {'Сума':<10} | {'Категорія'}\n"
-                separator = "-" * 70 + "\n"
+            if save_choice == "csv":
+                headers = ["ID", "Дата", "Назва", "Сума", "Категорія"]
+                # Готуємо дані: перетворюємо об'єкти SQLAlchemy на прості списки
+                data_rows = [[e.id, str(e.date), e.title, e.amount, e.category.name] for e in expenses]
+                exporter.save_to_csv("all_expenses", data_rows, headers)
+            elif save_choice == "json":
+                # Перетворюємо на список словників (ідеально для вебу та ШІ)
+                data_dicts = [{
+                    "id": e.id,
+                    "date": str(e.date),
+                    "title": e.title,
+                    "amount": e.amount,
+                    "category": e.category.name
+                } for e in expenses]
+                exporter.save_to_json("all_expenses_dump", data_dicts)
+            else:
+                print("Експорт скасовано.")
 
-                report_text = "ЗВІТ ПО ВСІХ ВИТРАТАХ\n" + separator + header + separator
-
-                for exp in expenses:
-                    line = f"{exp.id:<4} | {exp.date} | {exp.title:<15} | {exp.amount:<10.2f} | {exp.category.name}\n"
-                    report_text += line
-
-                report_text += separator
-
-                exporter.save_report_to_file(report_text)
-
-        elif choice == "7":
+        elif choice == "3":
             try:
-                e_id = int(input("ID витрати для оновлення: "))
-                new_sum = input("Нова сума (Enter щоб пропустити): ")
-                new_sum = float(new_sum) if new_sum else None
-                new_desc = input("Новий опис: ")
-                actions.update_expense(session, e_id, new_sum, new_desc)
+                e_id_input = input("Введіть ID витрати для редагування (або 0 для скасування): ")
+                if e_id_input == "0": continue
+
+                e_id = int(e_id_input)
+                exp = session.get(Expense, e_id)
+
+                if not exp:
+                    print(f"❌ Витрату з ID {e_id} не знайдено.")
+                    continue
+
+                print(f"\n📝 Редагування витрати #{e_id} (Enter — залишити без змін)")
+
+                # Назва
+                new_title = input(f"Нова назва [{exp.title}]: ") or None
+
+                # Сума
+                new_amount_raw = input(f"Нова сума [{exp.amount}]: ")
+                new_amount = None
+                if new_amount_raw:
+                    new_amount = float(new_amount_raw)
+                    if new_amount <= 0:
+                        print("Сума повинна бути > 0.")
+                        new_amount = None
+
+                # Категорія
+                new_cat_raw = input(f"Новий ID категорії [{exp.category_id}]: ")
+                new_cat = int(new_cat_raw) if new_cat_raw else None
+
+                # Дата (з окремою обробкою помилки формату)
+                new_date = None
+                new_date_raw = input(f"Нова дата (РРРР-ММ-ДД) [{exp.date}]: ")
+                if new_date_raw:
+                    try:
+                        new_date = date.fromisoformat(new_date_raw)
+                    except ValueError:
+                        print("Невірний формат дати. Використано стару дату.")
+
+                # Опис та Валюта
+                new_desc = input(f"Новий опис [{exp.description or 'немає'}]: ") or None
+                new_curr = input(f"Нова валюта [{exp.currency}]: ") or None
+
+                # Виклик оновлення
+                actions.update_expense(
+                    session, e_id,
+                    title=new_title,
+                    amount=new_amount,
+                    category_id=new_cat,
+                    expense_date=new_date,
+                    description=new_desc,
+                    currency=new_curr
+                )
             except ValueError:
                 print("Помилка оновлення.")
 
-        elif choice == "8":
+        elif choice == "4":
             try:
                 e_id = int(input("ID витрати для видалення: "))
                 actions.delete_expense(session, e_id)
             except ValueError:
                 print("Помилка ID.")
+        elif choice == "0":
+            break
 
+def menu_reports(session):
+    while True:
+        print("Опції формування звітів")
+        print("-" * 30)
+        print("1. Відфільтрувати витрати за датою / назвою / категорією")
+        print("2. Отримати максимальну витрату по категорії")
+        print("3. Отримати максимальну витрату по періоду")
+        print("4. Отримати мінімальну витрату по категорії")
+        print("5. Отримати мінімальну витрату по періоду")
+        print("6. Отримати суму по кожній з категорій")
+        print("7. Отримати топ категорію")
+        print("8. Отримати середні витрати за період")
+        print("0. Назад")
+
+        choice = input("\nОберіть звіт: ")
         # --- ЗВІТИ ---
-        elif choice == "9":
+        if choice == "1":
             s_date = input("З якої дати (РРРР-ММ-ДД) або Enter: ")
             e_date = input("По яку дату (РРРР-ММ-ДД) або Enter: ")
             title = input("Назва або Enter: ")
@@ -137,11 +243,11 @@ def main():
             res = reports.filter_expenses(session, start, end, title, cat)
             actions.display_expenses(res)
 
-        elif choice == "10":
+        elif choice == "2":
             for name, val in reports.get_max_expense_per_category(session):
                 print(f"{name}: {val:.2f}")
 
-        elif choice == "11":
+        elif choice == "3":
             try:
                 sd = date.fromisoformat(input("З якої дати (РРРР-ММ-ДД): "))
                 ed = date.fromisoformat(input("По яку дату (РРРР-ММ-ДД): "))
@@ -150,11 +256,11 @@ def main():
             except ValueError:
                 print("Невірний формат дати.")
 
-        elif choice == "12":
+        elif choice == "4":
             for name, val in reports.get_min_expense_per_category(session):
                 print(f"{name}: {val:.2f}")
 
-        elif choice == "13":
+        elif choice == "5":
             try:
                 sd = date.fromisoformat(input("З якої дати (РРРР-ММ-ДД): "))
                 ed = date.fromisoformat(input("По яку дату (РРРР-ММ-ДД): "))
@@ -163,15 +269,15 @@ def main():
             except ValueError:
                 print("Невірний формат дати.")
 
-        elif choice == "14":
+        elif choice == "6":
             for name, total in reports.get_totals_by_category(session):
                 print(f"{name}: {total:.2f}")
 
-        elif choice == "15":
+        elif choice == "7":
             res = reports.get_top_category(session)
             if res: print(f"ТОП Категорія: {res[0]} (Сума: {res[1]:.2f})")
 
-        elif choice == "16":
+        elif choice == "8":
             try:
                 sd = date.fromisoformat(input("З якої дати (РРРР-ММ-ДД): "))
                 ed = date.fromisoformat(input("По яку дату (РРРР-ММ-ДД): "))
@@ -181,13 +287,9 @@ def main():
                 print("Помилка дати.")
 
         elif choice == "0":
-            print("Вихід...")
             break
         else:
             print("Невірний пункт.")
-
-    session.close()
-
 
 if __name__ == "__main__":
     main()

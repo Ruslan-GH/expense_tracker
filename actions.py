@@ -1,3 +1,5 @@
+from sqlalchemy.exc import SQLAlchemyError
+
 from models import Category, Expense
 from datetime import date
 
@@ -26,46 +28,102 @@ def update_category_name(session, cat_id, new_name):
         print("Категорію не знайдено.")
 
 def delete_category(session, cat_id):
-    target = session.get(Category, cat_id)
-    if target:
-        # Завдяки cascade="all, delete-orphan", витрати видаляться автоматично
-        session.delete(target)
+    try:
+        category = session.get(Category, cat_id)
+        if not category:
+            print(f"Помилка: Категорію з ID {cat_id} не знайдено.")
+            return
+
+        expense_count = len(category.expenses)
+
+        if expense_count > 0:
+            print(f"Зверніть увагу, що в категорії '{category.name}' знайдено {expense_count} витрат.")
+            confirm = input(f"Ви впевнені, що хочете видалити її разом з усіма витратами? (y/n): ")
+            if confirm.lower() != 'y':
+                print("Видалення скасовано.")
+                return
+
+        session.delete(category)
         session.commit()
-        print(f"Категорія '{target.name}' та всі її витрати видалені.")
-    else:
-        print("Категорію не знайдено.")
+        print(f"Категорію '{category.name}' та всі пов'язані витрати успішно видалено.")
+
+    except Exception as e:
+        session.rollback()
+        print(f"Помилка при видаленні: {e}")
 
 # Для Витрат
 def add_expense(session, title, amount, category_id, description=None, currency="UAH", expense_date=None):
-    if not expense_date:
-        expense_date = date.today()
+    if amount <= 0:
+        print("Сума витрати повинна бути більшою за нуль!")
+        return
 
-    new_exp = Expense(
-        title=title,
-        amount=amount,
-        date=expense_date,
-        category_id=category_id,
-        description=description,
-        currency=currency
-    )
-    session.add(new_exp)
-    session.commit()
-    print(f"Витрата '{title}' на суму {amount} {currency} додана.")
+    try:
+        category = session.get(Category, category_id)
+        if not category:
+            print(f"Категорії з ID {category_id} не існує! Спочатку створіть категорію.")
+            return
+
+        new_expense = Expense(
+            title=title,
+            amount=amount,
+            category_id=category_id,
+            description=description
+        )
+
+        session.add(new_expense)
+        session.commit()
+        print(f"Витрату '{title}' на суму {amount} успішно додано до категорії '{category.name}'.")
+
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Критична помилка бази даних: {e}")
+    except Exception as e:
+        print(f"Сталася невідома помилка: {e}")
 
 def get_all_expenses(session):
     return session.query(Expense).join(Category).all()
 
-def update_expense(session, exp_id, new_amount=None, new_description=None):
-    target = session.get(Expense, exp_id)
-    if target:
-        if new_amount:
-            target.amount = new_amount
-        if new_description:
-            target.description = new_description
+
+def update_expense(session, expense_id, title=None, amount=None, category_id=None,
+                   expense_date=None, description=None, currency=None):
+    try:
+        expense = session.get(Expense, expense_id)
+        if not expense:
+            print(f"Витрату з ID {expense_id} не знайдено.")
+            return
+
+        # Використовуємо "is not None", щоб дозволити зміну на будь-яке валідне значення
+        if title is not None:
+            expense.title = title
+
+        if amount is not None:
+            if amount <= 0:
+                print("Сума має бути більшою за 0.")
+            else:
+                expense.amount = amount
+
+        if category_id is not None:
+            # Перевіряємо чи існує нова категорія
+            if session.get(Category, category_id):
+                expense.category_id = category_id
+            else:
+                print(f"Категорії {category_id} не існує.")
+
+        if expense_date is not None:
+            expense.date = expense_date
+
+        if description is not None:
+            expense.description = description
+
+        if currency is not None:
+            expense.currency = currency.upper()
+
         session.commit()
-        print(f"Витрата №{exp_id} оновлена.")
-    else:
-        print("Витрату не знайдено.")
+        print(f"Витрату ID {expense_id} успішно оновлено.")
+
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Помилка БД при оновленні: {e}")
 
 def delete_expense(session, exp_id):
     target = session.get(Expense, exp_id)

@@ -2,17 +2,13 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base
 
-load_dotenv()
+load_dotenv() # Завантажуємо змінні з .env
 
-DB_URL = os.getenv("DB_URL")
-engine = create_engine(DB_URL)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///default.db")
+
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
-
-def init_db():
-
-    Base.metadata.create_all(engine)
 
 def get_session():
     return SessionLocal()

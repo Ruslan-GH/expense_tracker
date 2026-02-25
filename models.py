@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, CheckConstraint
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
@@ -9,7 +9,7 @@ class Category(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False, unique=True)
 
-    expenses = relationship("Expense", back_populates="category")
+    expenses = relationship("Expense", back_populates="category", cascade="all, delete-orphan")
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -20,6 +20,10 @@ class Expense(Base):
     description = Column(String(255))
     currency = Column(String(10), default="UAH")
 
-    category_id = Column(Integer, ForeignKey('categories.id'), nullable=False)
+    __table_args__ = (
+        CheckConstraint('amount > 0', name='check_amount_positive'),
+    )
+
+    category_id = Column(Integer, ForeignKey('categories.id', ondelete="CASCADE"), nullable=False)
 
     category = relationship("Category", back_populates="expenses")
