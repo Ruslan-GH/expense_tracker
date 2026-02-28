@@ -12,9 +12,9 @@ def filter_expenses(session, start_date=None, end_date=None, title=None, categor
     if end_date:
         query = query.filter(Expense.date <= end_date)
     if title:
-        query = query.filter(Expense.title.ilike(f"%{title}%"))  # ilike - нечутливий до регістру
+        query = query.filter(Expense.title.ilike(f"%{title}%"))
     if category_name:
-        query = query.filter(Category.name == category_name)
+        query = query.filter(Category.name.ilike(f"%{category_name}%"))
 
     return query.all()
 

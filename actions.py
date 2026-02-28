@@ -1,7 +1,7 @@
 from sqlalchemy.exc import SQLAlchemyError
 
 from models import Category, Expense
-from datetime import datetime
+from datetime import date
 
 # Для Категорій
 def add_category(session, name):
@@ -52,9 +52,9 @@ def delete_category(session, cat_id):
         print(f"Помилка при видаленні: {e}")
 
 # Для Витрат
-def add_expense(session, title, amount, category_id, description=None, currency="UAH", date=None):
-    if date is None:
-        date = datetime.now()
+def add_expense(session, title, amount, category_id, description=None, currency="UAH", expense_date=date.today()):
+    if expense_date is None:
+        expense_date = date.today()
 
     if amount <= 0:
         print("Сума витрати повинна бути більшою за нуль!")
@@ -71,7 +71,7 @@ def add_expense(session, title, amount, category_id, description=None, currency=
             amount=amount,
             category_id=category_id,
             description=description,
-            date=date
+            expense_date=expense_date
         )
 
         session.add(new_expense)
@@ -96,7 +96,6 @@ def update_expense(session, expense_id, title=None, amount=None, category_id=Non
             print(f"Витрату з ID {expense_id} не знайдено.")
             return
 
-        # Використовуємо "is not None", щоб дозволити зміну на будь-яке валідне значення
         if title is not None:
             expense.title = title
 
@@ -107,7 +106,6 @@ def update_expense(session, expense_id, title=None, amount=None, category_id=Non
                 expense.amount = amount
 
         if category_id is not None:
-            # Перевіряємо чи існує нова категорія
             if session.get(Category, category_id):
                 expense.category_id = category_id
             else:
@@ -149,6 +147,5 @@ def display_expenses(expenses):
     print("-" * 70)
 
     for exp in expenses:
-        # Зверни увагу: exp.category.name працює завдяки relationship в моделях!
         print(f"{exp.id:<4} | {exp.date} | {exp.title:<15} | {exp.amount:<10.2f} | {exp.category.name}")
     print("=" * 70 + "\n")

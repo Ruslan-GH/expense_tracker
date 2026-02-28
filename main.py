@@ -3,6 +3,8 @@ import reports, actions, exporter
 
 from data_example import seed_data
 from models import Expense
+from utils import get_positive_decimal
+from datetime import datetime, date
 
 
 def main():
@@ -30,7 +32,7 @@ def main():
         elif choice == "3":
             menu_reports(session)
         elif choice == "0":
-            print("Завершення роботи. Бувай!")
+            print("Завершення роботи.")
             break
         else:
             print("Невірний вибір!")
@@ -39,6 +41,7 @@ def main():
 
 def menu_categories(session):
     while True:
+        print()
         print("Опції для роботи з категоріями")
         print("-" * 30)
         print("1. Додати категорію")
@@ -64,7 +67,7 @@ def menu_categories(session):
                 print(f"ID: {c.id:<3} | Назва: {c.name}")
             print("─" * 20)
 
-            save_choice = input("\nЕкспортувати цей список? (csv/json/no): ").lower().strip()
+            save_choice = input("\nДля експорту списку оберіть введіть формат - csv, або json. Для відмови введіть  - no: ").lower().strip()
 
             if save_choice == "csv":
                 headers = ["ID", "Назва"]
@@ -100,6 +103,7 @@ def menu_categories(session):
 
 def menu_expenses(session):
     while True:
+        print()
         print("Опції для роботи з витратами")
         print("-" * 30)
         print("1. Додати витрати")
@@ -114,15 +118,16 @@ def menu_expenses(session):
         if choice == "1":
             try:
                 cats = actions.get_all_categories(session)
-                for c in cats: print(f"{c.id}: {c.name}")
+                for c in cats:
+                    print(f"{c.id}: {c.name}")
+
                 c_id = int(input("Оберіть ID категорії: "))
                 title = input("Назва витрати: ")
-                try:
-                    amount = float(input("Сума: "))
-                except ValueError:
-                    print("Введіть числове значення суми.")
+
+                amount = get_positive_decimal(input("Сума: "))
+
                 desc = input("Опис (опційно): ")
-                actions.add_expense(session, title, amount, c_id, description=desc, date=datetime.now())
+                actions.add_expense(session, title, amount, c_id, description=desc, expense_date = date.today())
             except ValueError:
                 print("Помилка у форматі даних.")
 
@@ -130,14 +135,13 @@ def menu_expenses(session):
             expenses = actions.get_all_expenses(session)
             actions.display_expenses(expenses)
 
-            save_choice = input("\nЗберегти цей список у файл? (y/n): ")
+            save_choice = input("\nДля експорту списку оберіть введіть формат - csv, або json. Для відмови введіть  - no: ").lower().strip()
+
             if save_choice == "csv":
                 headers = ["ID", "Дата", "Назва", "Сума", "Категорія"]
-                # Готуємо дані: перетворюємо об'єкти SQLAlchemy на прості списки
                 data_rows = [[e.id, str(e.date), e.title, e.amount, e.category.name] for e in expenses]
                 exporter.save_to_csv("all_expenses", data_rows, headers)
             elif save_choice == "json":
-                # Перетворюємо на список словників (ідеально для вебу та ШІ)
                 data_dicts = [{
                     "id": e.id,
                     "date": str(e.date),
@@ -158,10 +162,10 @@ def menu_expenses(session):
                 exp = session.get(Expense, e_id)
 
                 if not exp:
-                    print(f"❌ Витрату з ID {e_id} не знайдено.")
+                    print(f"Витрату з ID {e_id} не знайдено.")
                     continue
 
-                print(f"\n📝 Редагування витрати #{e_id} (Enter — залишити без змін)")
+                print(f"\nРедагування витрати #{e_id} (Enter — залишити без змін)")
 
                 # Назва
                 new_title = input(f"Нова назва [{exp.title}]: ") or None
@@ -216,6 +220,7 @@ def menu_expenses(session):
 
 def menu_reports(session):
     while True:
+        print()
         print("Опції формування звітів")
         print("-" * 30)
         print("1. Відфільтрувати витрати за датою / назвою / категорією")
@@ -233,8 +238,17 @@ def menu_reports(session):
         if choice == "1":
             s_date = input("З якої дати (РРРР-ММ-ДД) або Enter: ")
             e_date = input("По яку дату (РРРР-ММ-ДД) або Enter: ")
-            title = input("Назва або Enter: ")
-            cat = input("Категорія або Enter: ")
+            title = input("Назва витрати: ")
+
+            print("\nДоступні категорії для пошуку:")
+            cats = actions.get_all_categories(session)
+            if cats:
+                print(", ".join([c.name for c in cats]))
+            else:
+                print("Список категорій порожній.")
+
+
+            cat = input("Категорія або Enter: ").strip()
 
             start = date.fromisoformat(s_date) if s_date else None
             end = date.fromisoformat(e_date) if e_date else None
