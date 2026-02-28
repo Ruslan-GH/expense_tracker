@@ -46,8 +46,9 @@ def menu_categories(session):
         print("-" * 30)
         print("1. Додати категорію")
         print("2. Показати всі категорії")
-        print("3. Оновити назву категорії")
-        print("4. Видалити категорію")
+        print("3. Переглянути деталі категорії")
+        print("4. Оновити назву категорії")
+        print("5. Видалити категорію")
         print("0. Назад")
         print("=" * 30)
 
@@ -71,12 +72,10 @@ def menu_categories(session):
 
             if save_choice == "csv":
                 headers = ["ID", "Назва"]
-                # Формуємо список списків для CSV
                 data_rows = [[c.id, c.name] for c in categories]
                 exporter.save_to_csv("all_categories", data_rows, headers)
 
             elif save_choice == "json":
-                # Формуємо список словників для JSON
                 data_dicts = [{"id": c.id, "name": c.name} for c in categories]
                 exporter.save_to_json("all_categories", data_dicts)
 
@@ -85,18 +84,25 @@ def menu_categories(session):
 
         elif choice == "3":
             try:
-                c_id = int(input("ID категорії для зміни: "))
+                c_id = int(input("Введіть ID категорії для перегляду деталей: ").strip())
+                actions.show_category_details(session, c_id)
+            except ValueError:
+                print("Введіть числове ID")
+
+        elif choice == "4":
+            try:
+                c_id = int(input("ID категорії для зміни: ").strip())
                 new_name = input("Нова назва: ")
                 actions.update_category_name(session, c_id, new_name)
             except ValueError:
-                print("Помилка: введіть числове ID")
+                print("Введіть числове ID")
 
-        elif choice == "4":
+        elif choice == "5":
             try:
                 c_id = int(input("ID категорії для видалення: "))
                 actions.delete_category(session, c_id)
             except ValueError:
-                print("Помилка: введіть числове ID")
+                print("Введіть числове ID")
 
         elif choice == "0":
             break
@@ -108,8 +114,9 @@ def menu_expenses(session):
         print("-" * 30)
         print("1. Додати витрати")
         print("2. Показати всі витрати")
-        print("3. Оновити витрати")
-        print("4. Видалити витрати")
+        print("3. Переглянути деталі витрати")
+        print("4. Оновити витрати")
+        print("5. Видалити витрати")
         print("0. Назад")
         print("=" * 30)
 
@@ -123,11 +130,25 @@ def menu_expenses(session):
 
                 c_id = int(input("Оберіть ID категорії: "))
                 title = input("Назва витрати: ")
-
                 amount = get_positive_decimal(input("Сума: "))
 
+                while True:
+                    date_input = input("Введіть дату витрати у форматі (РРРР-ММ-ДД), або натисніть enter для вибору поточної дати): ").strip()
+                    if not date_input:
+                        exp_date = date.today()
+                        break
+                    else:
+                        try:
+                            exp_date = date.fromisoformat(date_input)
+                            break
+                        except ValueError:
+                            print("Невірний формат дати. Використовуйте формат РРРР-ММ-ДД (наприклад, 2026-02-28).")
+
                 desc = input("Опис (опційно): ")
-                actions.add_expense(session, title, amount, c_id, description=desc, expense_date = date.today())
+                curr_input = input("Валюта (за замовчуванням UAH, Enter щоб пропустити): ").strip()
+                currency = curr_input if curr_input else "UAH"
+
+                actions.add_expense(session, title, amount, c_id, description=desc, currency=currency, expense_date = exp_date)
             except ValueError:
                 print("Помилка у форматі даних.")
 
@@ -154,6 +175,13 @@ def menu_expenses(session):
                 print("Експорт скасовано.")
 
         elif choice == "3":
+            try:
+                e_id = int(input("Введіть ID витрати для перегляду деталей: ").strip())
+                actions.show_expense_details(session, e_id)
+            except ValueError:
+                print("Введіть числове ID.")
+
+        elif choice == "4":
             try:
                 e_id_input = input("Введіть ID витрати для редагування (або 0 для скасування): ")
                 if e_id_input == "0": continue
@@ -209,7 +237,7 @@ def menu_expenses(session):
             except ValueError:
                 print("Помилка оновлення.")
 
-        elif choice == "4":
+        elif choice == "5":
             try:
                 e_id = int(input("ID витрати для видалення: "))
                 actions.delete_expense(session, e_id)

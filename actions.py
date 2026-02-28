@@ -71,7 +71,8 @@ def add_expense(session, title, amount, category_id, description=None, currency=
             amount=amount,
             category_id=category_id,
             description=description,
-            expense_date=expense_date
+            expense_date=expense_date,
+            currency = currency.upper()
         )
 
         session.add(new_expense)
@@ -149,3 +150,48 @@ def display_expenses(expenses):
     for exp in expenses:
         print(f"{exp.id:<4} | {exp.date} | {exp.title:<15} | {exp.amount:<10.2f} | {exp.category.name}")
     print("=" * 70 + "\n")
+
+
+def show_category_details(session, cat_id):
+    category = session.get(Category, cat_id)
+    if not category:
+        print(f"Категорію з ID {cat_id} не знайдено.")
+        return
+
+    expenses_list = category.expenses
+    expense_count = len(expenses_list)
+    total_spent = sum(exp.amount for exp in expenses_list)
+
+    print("\n" + "═" * 30)
+    print(f" ДЕТАЛІ КАТЕГОРІЇ: {category.name.upper()}")
+    print("═" * 30)
+    print(f" ID категорії:      {category.id}")
+    print(f" Кількість витрат:  {expense_count}")
+    print(f" Загальна сума:     {total_spent:.2f} грн")
+
+    if expense_count > 0:
+        print("-" * 45)
+        print(" Останні витрати:")
+        recent_expenses = sorted(expenses_list, key=lambda x: x.date, reverse=True)[:5]
+        for exp in recent_expenses:
+            print(f"   {exp.date} | {exp.title} | {exp.amount:.2f} грн")
+    print("═" * 45 + "\n")
+
+
+def show_expense_details(session, exp_id):
+    expense = session.get(Expense, exp_id)
+    if not expense:
+        print(f"Витрату з ID {exp_id} не знайдено.")
+        return
+
+    print("\n" + "═" * 45)
+    print(f" ДЕТАЛІ ВИТРАТИ #{expense.id}")
+    print("═" * 45)
+    print(f" Назва:      {expense.title}")
+    print(f" Категорія:  {expense.category.name}")
+    print(f" Сума:       {expense.amount:.2f} {expense.currency}")
+    print(f" Дата:       {expense.date}")
+
+    desc = expense.description if expense.description else "Немає опису"
+    print(f" Опис:       {desc}")
+    print("═" * 45 + "\n")

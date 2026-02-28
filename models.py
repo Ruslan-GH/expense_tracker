@@ -16,7 +16,7 @@ class Expense(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(100), nullable=False)
     amount = Column(Float, nullable=False)
-    date = Column(Date, nullable=False)
+    expense_date = Column(Date, nullable=False)
     description = Column(String(255))
     currency = Column(String(10), default="UAH")
 
